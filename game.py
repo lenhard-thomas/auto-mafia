@@ -9,6 +9,8 @@ Author: Lenhard O. Thomas (lot5)
 Date:   May 5, 2021
 """
 
+from exceptions import *
+
 
 class Game(object):
   """
@@ -98,12 +100,14 @@ class Game(object):
     Precondition: an int representing a valid discord user ID
     """
     if id not in self._signup_list:
-      raise Exception("ID not in list")
+      raise ID_NOT_FOUND()
     self._signup_list.remove()
 
   def vote(self, voter_id, voted_id):
     """
-    Has player [voter_id] vote to lynch player [voted_id].
+    Has player [voter_id] vote to lynch player [voted_id]. Raises ID_NOT_PLAYING(id)
+    where id is either voter_id or voted_id depending on which id that was passed
+    contains a player who did not sign up.
 
     Paramater voter_id: the id of the player who is voting
     Precondition: an int representing a valid discord user ID
@@ -111,15 +115,59 @@ class Game(object):
     Paramater voted_id: the id of the player who is voted to be lynched
     Precondition: an int representing a valid discord user ID
     """
+    if voter_id not in self._signup_list:
+      raise ID_NOT_PLAYING("voter_id")
+    if voted_id not in self._signup_list:
+      raise ID_NOT_PLAYING("voted_id")
+    try:
+      # Unvote to make sure that player does not double vote
+      self.unvote(voter_id)
+    except ID_NOT_FOUND:
+      # Skip ID_NOT_FOUND error because it doesn't matter in this case
+      pass
+
+    if voted_id in self._votes:
+      self._votes[voted_id].append(voter_id)
+    else:
+      self._votes[voted_id] = [voter_id]
+
+  def vote(self, voter_id):
+    """
+    Has player [voter_id] vote to not lynch any players. Raises ID_NOT_PLAYING(id)
+    where id is either voter_id or voted_id depending on which id that was passed
+    contains a player who did not sign up.
+
+    Paramater voter_id: the id of the player who is voting
+    Precondition: an int representing a valid discord user ID
+    """
+    if voter_id not in self._signup_list:
+      raise ID_NOT_PLAYING("voter_id")
+    if voted_id not in self._signup_list:
+      raise ID_NOT_PLAYING("voted_id")
+    try:
+      # Unvote to make sure that player does not double vote
+      self.unvote(voter_id)
+    except ID_NOT_FOUND:
+      # Skip ID_NOT_FOUND error because it doesn't matter in this case
+      pass
+
+    self._no_lynch.append(voter_id)
 
   def unvote(self, id):
     """
-    Has player [id] remove their vote. Raises the ID_NOT_FOUND error if the player
+    Has player [id] remove their vote. Raises ID_NOT_PLAYING() if id that was passed
+    contains a player who did not sign up and raises the ID_NOT_FOUND error if the player
     has not already voted for somebody.
 
     Paramater id: the id of the player who is removing their vote
     Precondition: an int representing a valid discord user ID
     """
+    if id not in self._signup_list:
+      raise ID_NOT_PLAYING()
+    for voted in self._votes:
+      if id in self._votes[voted]:
+        self._votes[voted].remove(id)
+    raise ID_NOT_FOUND()
 
   def display_votes(self):
     """
